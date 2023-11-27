@@ -1,50 +1,84 @@
-import { MongoClient } from "mongodb";
-import MeetupList from "../components/meetups/MeetupList";
+import MeetupDetail from '../../components/meetups/MeetupDetail';
+import { MongoClient,ObjectId } from 'mongodb';
+import Head from 'next/head'
+function MeetupDetails(props){
 
+    return (
+        <>
+        <Head>
+        <title>{props.meetupData.title}</title>
+        
+        <meta name="description" 
+        content={props.meetupData.description}
+        />
 
-const HomePage = (props) => {
-   
-  return (
+       
+      </Head>
 
-  <MeetupList meetups={props.meetups}/>
+      <MeetupDetail
+         image={props.meetupData.image}
+         title={props.meetupData.title}
+         address= {props.meetupData.address}
+         description = {props.meetupData.description}
+        />
+      
+        
+        
+        </>
+       
+        
+        
+        
+        
+    )
 
-  )
-  
 }
-// export async function getServerSideProps(context){
-//     const req = context.req;
-//     const res = context.res;
-//     //fetch data from an API
-//     return {
-//         props: {
-//             meetups:Dummy_MeetUps
-//         }
-//     }
+export async function getStaticPaths(){
+    const client=await MongoClient.connect('mongodb+srv://asifkarim:karim100@cluster0.rh2ajng.mongodb.net/meetups?retryWrites=true&w=majority');
 
-// }
-export async function getStaticProps(){
+    const db = client.db();
 
-    //fetch data from api
+    const meetupsCollection =db.collection('meetups')
+     
+    const meetups = await meetupsCollection.find({}, { _id: 1}).toArray();
 
-    const client=await MongoClient.connect('mongodb+srv://asifkarim:karim100@cluster0.rh2ajng.mongodb.net/meetups?retryWrites=true&w=majority')
-       const db = client.db();
+    client.close();
 
-       const meetupsCollection =db.collection('meetups')
+    return{
+        fallback: true,
 
-       const meetups=await meetupsCollection.find().toArray();
+        paths: meetups.map(meetup =>({params:{meetupId:meetup._id.toString()},
+    })),
+        
+    }
+}
+export async function getStaticProps(context){
+    //fetch data for single meetup
+    const meetupId = context.params.meetupId;
+    const client=await MongoClient.connect('mongodb+srv://asifkarim:karim100@cluster0.rh2ajng.mongodb.net/meetups?retryWrites=true&w=majority');
 
-       client.close();
+    const db = client.db();
+
+    const meetupsCollection =db.collection('meetups')
+     
+    const selectdMeetup = await meetupsCollection.findOne({
+        _id: new ObjectId(meetupId),
+    });
+    console.log(selectdMeetup)
+
+    client.close();
+    
     return{
         props:{
-            meetups:meetups.map(meetup =>({
-                title:meetup.title,
-                address:meetup.address,
-                image:meetup.image,
-                id:meetup._id.toString(),
-            }))
-        },
-        revalidate:1
+            meetupData:{
+                id: selectdMeetup._id.toString(),
+                title:selectdMeetup.title,
+                address:selectdMeetup.address,
+                image:selectdMeetup.image,
+                description:selectdMeetup.description,
+            }
+        }
     }
 }
 
-export default HomePage;
+export default MeetupDetails;
