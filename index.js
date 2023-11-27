@@ -1,28 +1,50 @@
+import { MongoClient } from "mongodb";
+import MeetupList from "../components/meetups/MeetupList";
 
-import { useRouter } from "next/router";
-import NewMeetupForm from "../../components/meetups/NewMeetupForm";
 
-function NewMeetUpPage() {
-    const router = useRouter();
+const HomePage = (props) => {
+   
+  return (
 
-    async function addMeetupHandler (enteredMeetupData){
-       const response=await fetch('/api/new-meetup',{
-        method:'POST',
-        body:JSON.stringify(enteredMeetupData),
-        headers:{
-            'Content-Type':'application/json'
-                }
-       });
-       const data = await response.json();
+  <MeetupList meetups={props.meetups}/>
 
-       console.log(data);
+  )
+  
+}
+// export async function getServerSideProps(context){
+//     const req = context.req;
+//     const res = context.res;
+//     //fetch data from an API
+//     return {
+//         props: {
+//             meetups:Dummy_MeetUps
+//         }
+//     }
 
-       router.push('/');
+// }
+export async function getStaticProps(){
 
+    //fetch data from api
+
+    const client=await MongoClient.connect('mongodb+srv://asifkarim:karim100@cluster0.rh2ajng.mongodb.net/meetups?retryWrites=true&w=majority')
+       const db = client.db();
+
+       const meetupsCollection =db.collection('meetups')
+
+       const meetups=await meetupsCollection.find().toArray();
+
+       client.close();
+    return{
+        props:{
+            meetups:meetups.map(meetup =>({
+                title:meetup.title,
+                address:meetup.address,
+                image:meetup.image,
+                id:meetup._id.toString(),
+            }))
+        },
+        revalidate:1
     }
-    return <NewMeetupForm  onAddMeetup={addMeetupHandler}/>
-
-
 }
 
-export default NewMeetUpPage;
+export default HomePage;
